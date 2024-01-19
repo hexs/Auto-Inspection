@@ -4,12 +4,22 @@ from datetime import datetime
 from pprint import pprint
 import cv2
 import numpy as np
+from typing import Optional
+from pygame_gui.core.interfaces import IUIManagerInterface
 import pygame
 import pygame_gui
 from pygame_gui.core import ObjectID
 from pygame_gui.elements import UILabel, UITextBox, UIButton, UIHorizontalSlider
 from pygame_gui.elements import UIWindow, UIPanel, UIImage
 from pygame_gui.windows import UIFileDialog
+
+
+class LoadWindow(UIFileDialog):
+    def __init__(self,
+                 rect: pygame.Rect,
+                 manager: Optional[IUIManagerInterface] = None
+                 ):
+        super().__init__(rect=rect, manager=manager)
 
 
 def re_rect(rect, offset=0):
@@ -26,6 +36,7 @@ def re_rect(rect, offset=0):
     h = h + offset * 2
     return x, y, w, h
 
+
 def rect_2x(rect, times=2):
     x, y, w, h = rect
     if w < 0:
@@ -41,6 +52,7 @@ def rect_2x(rect, times=2):
     w = w + offset_w * 2
     h = h + offset_h * 2
     return x, y, w, h
+
 
 def is_mouse_in_manager(manager):
     manager_rect = manager.get_root_container().get_rect()
@@ -71,6 +83,7 @@ def cvimage_to_pygame(image):
 def main(data):
     import random
     from pygame_gui.core.utility import create_resource_path
+    from func.LoadFileWindow import LoadFileWindow
 
     pygame.init()
     pygame.display.set_caption('Auto Inspection')
@@ -159,13 +172,12 @@ def main(data):
                     data['mode'] = 'auto'
                 elif event.ui_element == load_button:
                     load_button.disable()
-                    file_dialog = UIFileDialog(pygame.Rect(160, 50, 440, 500),
-                                               manager,
-                                               window_title='Load Image...',
-                                               initial_file_path='data/images/',
-                                               allow_picking_directories=True,
-                                               allow_existing_files_only=True,
-                                               allowed_suffixes={""})
+                    file_dialog = LoadFileWindow(pygame.Rect(160, 50, 440, 500),
+                                                 manager,
+                                                 window_title='Load Image...',
+                                                 initial_file_path='data/',
+                                                 allowed_suffixes={".png"}, )
+                    file_dialog.is_blocking = True
 
 
                 # debug mode
@@ -183,23 +195,10 @@ def main(data):
                     drawing = False
 
             if event.type == pygame_gui.UI_FILE_DIALOG_PATH_PICKED:  # 32883
-                print('++')
-                # if self.display_loaded_image is not None:
-                #     self.display_loaded_image.kill()
+                image_path = create_resource_path(event.text)
+                image_form_cam = cv2.imread(image_path)
+                image_surface = cvimage_to_pygame(image_form_cam)
 
-                try:
-                    image_path = create_resource_path(event.text)
-                    image_form_cam = cv2.imread(image_path)
-                    image_surface = cvimage_to_pygame(image_form_cam)
-                    # image_surface = pygame.image.load(image_path).convert_alpha()
-                    # image_rect = loaded_image.get_rect()
-                    # aspect_ratio = image_rect.width / image_rect.height
-                    # print(loaded_image)
-                    # print(type(loaded_image))
-
-
-                except pygame.error:
-                    pass
             if (event.type == pygame_gui.UI_WINDOW_CLOSE
                     and event.ui_element == file_dialog):
                 load_button.enable()
@@ -238,7 +237,6 @@ def main(data):
             pygame.draw.rect(image_surface, (255, 240, 0), re_rect(rect), 1)
             if data['tool'] in ['set mark']:
                 pygame.draw.rect(image_surface, (20, 20, 20), rect_2x(rect, 4), 3)
-
 
         fps_label.set_text(f'{clock.get_fps():.0f}fps')
         mouse_pos_label.set_text(f'mouse pos:{pygame.mouse.get_pos()}')
