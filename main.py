@@ -11,6 +11,7 @@ from pygame_gui.elements import UILabel, UITextBox, UIButton, UIHorizontalSlider
 from pygame_gui.elements import UIWindow, UIPanel, UIImage
 from pygame_gui.windows import UIFileDialog
 
+
 def re_rect(rect, offset=0):
     x, y, w, h = rect
     if w < 0:
@@ -23,6 +24,22 @@ def re_rect(rect, offset=0):
     y = y - offset
     w = w + offset * 2
     h = h + offset * 2
+    return x, y, w, h
+
+def rect_2x(rect, times=2):
+    x, y, w, h = rect
+    if w < 0:
+        w = -w
+        x = x - w
+    if h < 0:
+        h = -h
+        y = y - h
+    offset_w = w * times
+    offset_h = h * times
+    x = x - offset_w
+    y = y - offset_h
+    w = w + offset_w * 2
+    h = h + offset_h * 2
     return x, y, w, h
 
 def is_mouse_in_manager(manager):
@@ -51,9 +68,9 @@ def cvimage_to_pygame(image):
     return pygame.image.frombuffer(image.tobytes(), image.shape[1::-1], "RGB")
 
 
-
 def main(data):
     import random
+    from pygame_gui.core.utility import create_resource_path
 
     pygame.init()
     pygame.display.set_caption('Auto Inspection')
@@ -72,9 +89,9 @@ def main(data):
     manager = pygame_gui.UIManager((1920, 1080), 'UI/themes/manager_main.json')
     manager_image = pygame_gui.UIManager((1000 * 4 // 3, 1000), 'UI/themes/manager_main.json')
     manager_image.get_root_container().get_rect().topleft = 1, 58
-    image_form_cam = data['capture'][1]
-    image_surface = cvimage_to_pygame(data['capture'][1])
-    log_window = UIWindow(rect=pygame.Rect((600, 777), (1300 + 33, 270 + 60)),
+    image_form_cam = data['capture res'][1]
+    image_surface = cvimage_to_pygame(data['capture res'][1])
+    log_window = UIWindow(rect=pygame.Rect((0, 700), (1920, 270 + 60)),
                           manager=manager, resizable=True,
                           window_display_title='Log window')
 
@@ -89,9 +106,11 @@ def main(data):
     auto_button = UIButton(pygame.Rect((160 + 60 * 2, 30), (60, 28)), 'auto', manager)
     capture_button = UIButton(pygame.Rect((160 + 60 * 4, 30), (60, 28)), 'capture', manager)
     load_button = UIButton(pygame.Rect((160 + 60 * 5, 30), (60, 28)), 'Load Image', manager)
+    file_dialog = None
 
     select_button = UIButton(pygame.Rect((1337, 70 + 30 * 0), (100, 30)), 'select', manager)
-    set_frame_button = UIButton(pygame.Rect((1337, 70 + 30 * 1), (100, 30)), 'set frame', manager)
+    set_mark_button = UIButton(pygame.Rect((1337, 70 + 30 * 1), (100, 30)), 'set mark', manager)
+    set_frame_button = UIButton(pygame.Rect((1337, 70 + 30 * 2), (100, 30)), 'set frame', manager)
 
     fps_label = UILabel(pygame.Rect(10, 1060, 50, 20), "-", manager)
     mouse_pos_label = UILabel(pygame.Rect(80, 1060, 200, 20), "-", manager, )
@@ -99,11 +118,9 @@ def main(data):
     status_cam = UILabel(pygame.Rect(500, 1060, 500, 20), "-", manager, )
     log_label = UILabel(pygame.Rect(670, 1060, 500, 20), "-", manager, )
 
-    htm_text = UITextBox('', pygame.Rect((0, 0), (1300, 270)), manager=manager, container=log_window)
+    htm_text = UITextBox('', pygame.Rect((0, 0), (1920 - 30, 270)), manager=manager, container=log_window)
     t = []
     # htm_text.set_active_effect(pygame_gui.TEXT_EFFECT_TYPING_APPEAR)
-
-
 
     start_pos = None
     end_pos = None
@@ -114,21 +131,25 @@ def main(data):
         image_mouse_pos = manager_pos(manager_image)
         main_mouse_pos = pygame.mouse.get_pos()
         image_surface = cvimage_to_pygame(image_form_cam)
-
+        t = t[:10]
+        htm_text.set_text('<br>'.join(t))
         for event in pygame.event.get():
             manager.process_events(event)
+            if event.type not in [1024]:
+                print(event)
+                t.insert(0, f'{datetime.now().second}{event}'.replace('<', '(').replace('>', ')'))
             if event.type == pygame.QUIT:
                 data['is_running'] = False
             elif event.type == pygame_gui.UI_BUTTON_PRESSED:
                 if event.ui_element == minimize:
                     pygame.display.iconify()
                 elif event.ui_element == maximize:
-                    data['stop capture'] = True
+                    data['capture'] = 0
                 elif event.ui_element == close:
                     data['is_running'] = False
 
                 elif event.ui_element == capture_button:
-                    image_form_cam = data['capture'][1]
+                    image_form_cam = data['capture res'][1]
 
                 elif event.ui_element == debug_button:
                     data['mode'] = 'debug'
@@ -150,18 +171,41 @@ def main(data):
                 # debug mode
                 elif event.ui_element == select_button:
                     data['tool'] = 'select'
+                elif event.ui_element == set_mark_button:
+                    data['tool'] = 'set mark'
+                    start_pos = None
+                    end_pos = None
+                    drawing = False
                 elif event.ui_element == set_frame_button:
                     data['tool'] = 'set frame'
                     start_pos = None
                     end_pos = None
                     drawing = False
 
+            if event.type == pygame_gui.UI_FILE_DIALOG_PATH_PICKED:  # 32883
+                print('++')
+                # if self.display_loaded_image is not None:
+                #     self.display_loaded_image.kill()
+
+                try:
+                    image_path = create_resource_path(event.text)
+                    image_form_cam = cv2.imread(image_path)
+                    image_surface = cvimage_to_pygame(image_form_cam)
+                    # image_surface = pygame.image.load(image_path).convert_alpha()
+                    # image_rect = loaded_image.get_rect()
+                    # aspect_ratio = image_rect.width / image_rect.height
+                    # print(loaded_image)
+                    # print(type(loaded_image))
+
+
+                except pygame.error:
+                    pass
             if (event.type == pygame_gui.UI_WINDOW_CLOSE
                     and event.ui_element == file_dialog):
                 load_button.enable()
                 file_dialog = None
 
-            if image_mouse_pos and data['mode'] == 'debug' and data['tool'] == 'set frame':
+            if image_mouse_pos and data['mode'] == 'debug' and data['tool'] in ['set frame', 'set mark']:
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 1:  # Left mouse button
                         end_pos = None
@@ -172,18 +216,19 @@ def main(data):
                         drawing = False
 
         # ---  เส้นประ  --------------------------------
-        if image_mouse_pos and data['mode'] == 'debug' and data['tool'] == 'set frame':
-            x, y = image_mouse_pos
-            pygame.draw.line(image_surface, (255, 255, 255), (x, 0), (x, 1399), 1)
-            pygame.draw.line(image_surface, (255, 255, 255), (0, y), (999, y), 1)
-            for i in range(0, 999, 10):
-                pygame.draw.line(image_surface,
-                                 (random.randint(0, 200), random.randint(0, 100), random.randint(0, 200)),
-                                 (x, i), (x, i + 5), 1)
-            for i in range(0, 1399, 10):
-                pygame.draw.line(image_surface,
-                                 (random.randint(0, 200), random.randint(0, 100), random.randint(0, 200)),
-                                 (i, y), (i + 5, y), 1)
+        if image_mouse_pos and data['mode'] == 'debug':
+            if data['tool'] in ['set frame', 'set mark']:
+                x, y = image_mouse_pos
+                pygame.draw.line(image_surface, (255, 255, 255), (x, 0), (x, 1399), 1)
+                pygame.draw.line(image_surface, (255, 255, 255), (0, y), (999, y), 1)
+                for i in range(0, 999, 10):
+                    pygame.draw.line(image_surface,
+                                     (random.randint(0, 200), random.randint(0, 100), random.randint(0, 200)),
+                                     (x, i), (x, i + 5), 1)
+                for i in range(0, 1399, 10):
+                    pygame.draw.line(image_surface,
+                                     (random.randint(0, 200), random.randint(0, 100), random.randint(0, 200)),
+                                     (i, y), (i + 5, y), 1)
         # --- กรอบเหลือง ----------------------------------
         if drawing:
             end_pos = image_mouse_pos
@@ -191,11 +236,14 @@ def main(data):
             rect = pygame.Rect(start_pos, (end_pos[0] - start_pos[0], end_pos[1] - start_pos[1]))
             pygame.draw.rect(image_surface, (20, 20, 20), re_rect(rect, 1), 3)
             pygame.draw.rect(image_surface, (255, 240, 0), re_rect(rect), 1)
+            if data['tool'] in ['set mark']:
+                pygame.draw.rect(image_surface, (20, 20, 20), rect_2x(rect, 4), 3)
+
 
         fps_label.set_text(f'{clock.get_fps():.0f}fps')
         mouse_pos_label.set_text(f'mouse pos:{pygame.mouse.get_pos()}')
         image_pos_label.set_text(f"Image mouse pos:{manager_pos(manager_image)}")
-        status_cam.set_text(f"status cam:{data['capture'][0]}")
+        status_cam.set_text(f"status cam:{data['capture res'][0]}")
         log_label.set_text(f"{data['mode']} {data['tool']} {start_pos, end_pos}")
 
         display.blit(background, (0, 0))
@@ -213,22 +261,9 @@ def main(data):
 
 if __name__ == '__main__':
     data = {}
-    data['capture'] = (False, None)
-    data['stop capture'] = False
+    data['capture res'] = (False, None)
     data['reconnect_cam'] = False
     data['is_running'] = True
     data['mode'] = 'debug'  # debug, manual, auto
     data['tool'] = 'select'  # select,set frame
     main(data)
-
-
-
-
-
-
-
-
-
-
-
-

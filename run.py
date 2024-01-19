@@ -1,6 +1,3 @@
-import time
-
-
 def capture(data):
     import cv2
     import time
@@ -13,16 +10,19 @@ def capture(data):
 
     cap = reset()
     while data['is_running']:
-        if data.get('stop capture'):
-            time.sleep(0.5)
-        else:
-            data['capture'] = cap.read()
-            if data['reconnect_cam']:
-                data['reconnect_cam'] = False
-                data['capture'] = (False, None)
-                cap = reset()
-            # cv2.imshow('img', data['capture'][1])
+        if data['reconnect_cam']:
+            data['reconnect_cam'] = False
+            data['capture res'] = (False, None)
+            cap = reset()
+
+        if data['capture']:
+            if data['capture'] == 1:
+                data['capture'] = 0
+            data['capture res'] = cap.read()
+            # cv2.imshow('img', data['capture res'][1])
             # cv2.waitKey(1)
+        else:
+            time.sleep(0.5)
 
 
 def req_io_box(data):
@@ -80,13 +80,13 @@ if __name__ == '__main__':
     import multiprocessing
     import json
     import os
-    from main2 import main
+    from main import main
 
     stop_event = multiprocessing.Event()
     manager = multiprocessing.Manager()
     data = manager.dict()
-    data['capture'] = (False, None)
-    data['stop capture'] = False
+    data['capture'] = 0,  # 0=don't cap, 1=one time, 2=all time
+    data['capture res'] = (False, None)
     data['reconnect_cam'] = False
     data['is_running'] = True
     data['mode'] = 'debug'  # debug, manual, auto
