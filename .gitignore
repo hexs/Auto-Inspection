@@ -1,0 +1,6 @@
+.idea/
+.venv/
+__pycache__/
+data/
+e/
+pygame_gui_examples-master/
