@@ -22,11 +22,6 @@ class LoadWindow(UIFileDialog):
         super().__init__(rect=rect, manager=manager)
 
 
-def is_mouse_in_manager(manager):
-    manager_rect = manager.get_root_container().get_rect()
-    mouse_x, mouse_y = pygame.mouse.get_pos()
-    return manager_rect.collidepoint(mouse_x, mouse_y)
-
 
 def manager_pos(manager, float=False):
     manager_rect = manager.get_root_container().get_rect()
@@ -52,8 +47,9 @@ def main(data):
     import random
     from pygame_gui.core.utility import create_resource_path
     from func.LoadFileWindow import LoadFileWindow
-    from func.DebugMode import DebugMode
     from func.DebugWindow import DebugWindow
+    from func.DrawFrame import DrawFrame
+    from func.about_point import xyxy2xywh
 
     pygame.init()
     pygame.display.set_caption('Auto Inspection')
@@ -74,7 +70,8 @@ def main(data):
     manager_image.get_root_container().get_rect().topleft = 1, 58
     image_form_cam = data['capture res'][1]
     image_surface = cvimage_to_pygame(data['capture res'][1])
-    debug_mode = DebugMode(manager,manager_image)
+    draw_frame = DrawFrame(surface=image_surface)
+
     log_window = UIWindow(rect=pygame.Rect((0, 700), (1920, 270 + 60)),
                           manager=manager, resizable=True,
                           window_display_title='Log window')
@@ -101,18 +98,17 @@ def main(data):
     htm_text = UITextBox('', pygame.Rect((0, 0), (1920 - 30, 270)), manager=manager, container=log_window)
     t = []
     # htm_text.set_active_effect(pygame_gui.TEXT_EFFECT_TYPING_APPEAR)
+    debug_window = None
 
     clock = pygame.time.Clock()
     while data['is_running']:
         time_delta = clock.tick(60) / 1000.0
-        image_mouse_pos = manager_pos(manager_image)
-        main_mouse_pos = pygame.mouse.get_pos()
         image_surface = cvimage_to_pygame(image_form_cam)
         t = t[:10]
         htm_text.set_text('<br>'.join(t))
         for event in pygame.event.get():
             manager.process_events(event)
-            debug_mode.process_events(event, data, image_mouse_pos)
+
             if event.type not in [1024]:
                 print(event)
                 t.insert(0, f'{datetime.now().second}{event}'.replace('<', '(').replace('>', ')'))
@@ -122,7 +118,7 @@ def main(data):
                 if event.ui_element == minimize:
                     pygame.display.iconify()
                 elif event.ui_element == maximize:
-                    data['capture'] = 0
+                    debug_window.set_mark_window.m1x.set_text('123')
                 elif event.ui_element == close:
                     data['is_running'] = False
 
@@ -131,7 +127,7 @@ def main(data):
 
                 elif event.ui_element == debug_button:
                     data['mode'] = 'debug'
-                    debug_window = DebugWindow(manager=manager)
+                    debug_window = DebugWindow(manager=manager, manager_image=manager_image)
                 elif event.ui_element == manual_button:
                     data['mode'] = 'manual'
                 elif event.ui_element == auto_button:
@@ -155,19 +151,23 @@ def main(data):
                 load_button.enable()
                 file_dialog = None
 
-        image_surface = debug_mode.uupdate(image_surface, data, image_mouse_pos)
 
         fps_label.set_text(f'{clock.get_fps():.0f}fps')
         mouse_pos_label.set_text(f'mouse pos:{pygame.mouse.get_pos()}')
         image_pos_label.set_text(f"Image mouse pos:{manager_pos(manager_image)}")
         status_cam.set_text(f"status cam:{data['capture res'][0]}")
-        log_label.set_text(f"{data['mode']} {data['tool']} {debug_mode.start_pos, debug_mode.end_pos}")
+        try:
+            log_label.set_text(f"{debug_window.start_pos, debug_window.end_pos}")
+        except:
+            pass
+
+        if debug_window:
+            debug_window._update_(draw_frame)
 
         display.blit(background, (0, 0))
         display.blit(title_bar, (0, 0))
-
         display.blit(status_bar, (0, 1080 - 20))
-
+        image_surface = draw_frame.update(image_surface)
         display.blit(image_surface, manager_image.get_root_container().get_rect().topleft)
 
         manager.update(time_delta)
