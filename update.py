@@ -104,7 +104,7 @@ def activate_venv_and_run_program(main_py_path):
     try:
         subprocess.run(combined_command, shell=True, check=True)
     except subprocess.CalledProcessError as e:
-        print(RED, f"Error executing main.py: {e}", ENDC, sep='')
+        print(f"{RED}Error executing {UNDERLINE}{main_py_path}{ENDC}{RED}: {e}{ENDC}")
 
 
 def update():
@@ -131,3 +131,4 @@ if __name__ == '__main__':
         create_venv()
     upgrade_pip()
     activate_venv_and_run_program('InstallPackage.py')
+    activate_venv_and_run_program('main.py')

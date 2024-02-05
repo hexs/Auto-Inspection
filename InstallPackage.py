@@ -23,14 +23,25 @@ def install_package(package_name):
         print(f"Failed to install {package_name}. Error: {str(e)}")
         prin(ENDC)
 
+
 def upgrade_pip():
     try:
         subprocess.run("python -m pip install --upgrade pip", check=True)
         print(f"{BLUE}upgrade pip installed successfully.{ENDC}")
     except Exception as e:
         print(f"{RED}Failed to upgrade pip. Error: {str(e)}{ENDC}")
+
+
 def install_package_all():
-    all_packages = ['numpy', 'opencv-python', 'requests', 'tensorflow']
+    all_packages = [
+        'requests',
+        'numpy',
+        'opencv-python',
+        'Flask',
+        'pygame',
+        'pygame-gui',
+        'tensorflow',
+    ]
     ins_packages = installed_packages()
 
     for p in set(all_packages) - set(ins_packages):
