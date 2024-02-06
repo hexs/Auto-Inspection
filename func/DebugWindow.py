@@ -8,6 +8,7 @@ from pygame_gui.windows import UIFileDialog
 import random
 from pygame_gui.core.interfaces import IWindowInterface, IUIManagerInterface
 from func.about_point import xyxy2xywh
+from func.SelectionFrameList import SelectionFrameList
 
 
 def re_rect(rect, offset=0):
@@ -69,7 +70,6 @@ class SetMarkWindow(UIWindow):
                                      self.manager, container=self)
         self.draw2_button = UIButton(pygame.Rect((10, 10 + 30 * 3), (100, 30)), 'mark 2',
                                      self.manager, container=self)
-        self.button_focus = '-'
 
         self.m1_label = UILabel(pygame.Rect((150, 10 + 30 * 0.5), (60, 30)), 'mark 1:',
                                 self.manager, container=self)
@@ -99,16 +99,14 @@ class SetMarkWindow(UIWindow):
             if event.ui_element == self.draw1_button:
                 self.draw1_button.disable()
                 self.draw2_button.enable()
-                self.button_focus = 'm1'
             if event.ui_element == self.draw2_button:
                 self.draw1_button.enable()
                 self.draw2_button.disable()
-                self.button_focus = 'm2'
 
 
 class SetFrameWindow(UIWindow):
     def __init__(self,
-                 rect: pygame.Rect = pygame.Rect(100, 100, 600, 300),
+                 rect: pygame.Rect = pygame.Rect(100, 100, 500, 400),
                  manager: Optional[IUIManagerInterface] = None,
                  window_display_title: str = "Set Frame",
                  element_id: Optional[str] = None,
@@ -119,22 +117,90 @@ class SetFrameWindow(UIWindow):
         super().__init__(rect, manager, window_display_title, element_id, object_id, resizable, visible, draggable)
 
         self.manager = manager
-        self.select_button = UIButton(pygame.Rect((10, 10 + 30 * 1), (100, 30)), 'select',
-                                      self.manager, container=self)
-        self.draw_button = UIButton(pygame.Rect((10, 10 + 30 * 2), (100, 30)), 'draw',
-                                    self.manager, container=self)
-        self.select_button.disable()
+        # self.select_button = UIButton(pygame.Rect((10, 10 + 30 * 1), (100, 30)), 'select',
+        #                               self.manager, container=self)
+        # self.draw_button = UIButton(pygame.Rect((10, 10 + 30 * 2), (100, 30)), 'draw',
+        #                             self.manager, container=self)
+        # self.select_button.disable()
+        UILabel(relative_rect=pygame.Rect(20, 50 + 30 * 0, 50, 30), text='name', manager=self.manager, container=self)
+        UILabel(relative_rect=pygame.Rect(20, 50 + 30 * 1, 50, 30), text='x', manager=self.manager, container=self)
+        UILabel(relative_rect=pygame.Rect(20, 50 + 30 * 2, 50, 30), text='y', manager=self.manager, container=self)
+        UILabel(relative_rect=pygame.Rect(20, 50 + 30 * 3, 50, 30), text='w', manager=self.manager, container=self)
+        UILabel(relative_rect=pygame.Rect(20, 50 + 30 * 4, 50, 30), text='h', manager=self.manager, container=self)
+        self.frame_name_entry_line = UITextEntryLine(pygame.Rect(70, 50, 180, 30), self.manager, self)
+        self.frame_x_entry_line = UITextEntryLine(pygame.Rect(70, 50 + 30 * 1, 180, 30), self.manager, self)
+        self.frame_y_entry_line = UITextEntryLine(pygame.Rect(70, 50 + 30 * 2, 180, 30), self.manager, self)
+        self.frame_w_entry_line = UITextEntryLine(pygame.Rect(70, 50 + 30 * 3, 180, 30), self.manager, self)
+        self.frame_h_entry_line = UITextEntryLine(pygame.Rect(70, 50 + 30 * 4, 180, 30), self.manager, self)
+
+        self.frame_list = SelectionFrameList(
+            relative_rect=pygame.Rect(260, 50, 200, 200),
+            item_list=[('Item 1', (10, 20, 30, 20)),
+                       ('Item 2', (10, 20, 30, 20))
+                       ],
+            manager=self.manager,
+            container=self
+        )
+
+        self.add_button = UIButton(relative_rect=pygame.Rect(10, 260, 75, 30),
+                                   text='Add', manager=self.manager, container=self)
+        self.save_button = UIButton(relative_rect=pygame.Rect(85, 260, 75, 30),
+                                    text='Save', manager=self.manager, container=self)
+        self.delete_button = UIButton(relative_rect=pygame.Rect(210, 260, 75, 30),
+                                      text='Delete', manager=self.manager, container=self)
 
     def process_event(self, event: pygame.event.Event) -> bool:
         super().process_event(event)
-        if event.type == pygame_gui.UI_BUTTON_PRESSED:
-            if event.ui_element == self.select_button:
-                self.select_button.disable()
-                self.draw_button.enable()
+        # if event.type == pygame_gui.UI_BUTTON_PRESSED:
+        #     if event.ui_element == self.select_button:
+        #         self.select_button.disable()
+        #         self.draw_button.enable()
+        #
+        #     if event.ui_element == self.draw_button:
+        #         self.draw_button.disable()
+        #         self.select_button.enable()
 
-            if event.ui_element == self.draw_button:
-                self.draw_button.disable()
-                self.select_button.enable()
+        if event.type == pygame.USEREVENT and event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+            if event.ui_element == self.add_button:
+                name = self.frame_name_entry_line.get_text()
+                x = float(self.frame_x_entry_line.get_text())
+                y = float(self.frame_y_entry_line.get_text())
+                w = float(self.frame_w_entry_line.get_text())
+                h = float(self.frame_h_entry_line.get_text())
+                if name and x and y and w and h:
+                    self.frame_list.add_items([(name, (x, y, w, h)), ])
+                    self.frame_name_entry_line.set_text(f'{name[:-1]}{chr(ord(name[-1]) + 1)}')
+
+            elif event.ui_element == self.delete_button:
+                selected_list = [item for item in self.frame_list.item_list if item['selected']]
+                if len(selected_list):  # ต้อง selected ให้มีข้อมูล
+                    selected = selected_list[0]
+                    self.frame_list.remove_items([(selected['text'], selected['frame_pos'])])
+            # if selected_items:
+            #     print(selected_items)
+            #     frame_list.remove_items([selected_items])
+            # elif event.ui_element == save_button:
+            #     selected_items = frame_list.get_single_selection()
+            #     entry_box_dict = json.loads(frame_data_entry_box.get_text())
+            #     if selected_items is not None:  # ต้อง selected_item
+            #         frame_list.remove_item(selected_items)
+            #         frame_list.add_item(entry_box_dict['name'], entry_box_dict)
+
+
+
+        elif event.type == pygame.USEREVENT and event.user_type == pygame_gui.UI_SELECTION_LIST_NEW_SELECTION:
+            selected_items = self.frame_list.get_single_selection()
+            if selected_items:
+                selected_list = [item for item in self.frame_list.item_list if item['selected']]
+                if len(selected_list):  # ต้อง selected ให้มีข้อมูล
+                    selected = selected_list[0]
+                    frame_pos = selected['frame_pos']
+                    x, y, w, h = frame_pos
+                    self.frame_name_entry_line.set_text(selected['text'])
+                    self.frame_x_entry_line.set_text(f'{x}')
+                    self.frame_y_entry_line.set_text(f'{y}')
+                    self.frame_w_entry_line.set_text(f'{w}')
+                    self.frame_h_entry_line.set_text(f'{h}')
 
 
 class DebugWindow(UIWindow):
@@ -153,6 +219,7 @@ class DebugWindow(UIWindow):
         self.set_mark_window = None
         self.set_frame_window = None
         self.enable_drawing = False
+        self.enable_drawing_if_moues_in_image = True
         self.start_pos = None
         self.end_pos = None
         self.drawing = False
@@ -176,16 +243,18 @@ class DebugWindow(UIWindow):
     def process_event(self, event: pygame.event.Event) -> bool:
         super().process_event(event)
 
-        mouse_pos = pygame.mouse.get_pos()
-        image_mouse_pos = manager_pos(self.manager_image)
+        mouse_pos = pygame.mouse.get_pos()  # ตำแหน่ง mouse
+        image_mouse_pos = manager_pos(self.manager_image)  # ตำแหน่ง mouse ในภาพ
 
         if event.type == pygame_gui.UI_BUTTON_PRESSED:
             if event.ui_element == self.set_mark_button:
-                self.set_mark_window = SetMarkWindow(manager=self.manager)
+                self.set_mark_window = SetMarkWindow(pygame.Rect(1360, 100, 500, 400), manager=self.manager)
                 self.set_mark_res.set_text('ok')
             elif event.ui_element == self.set_frame_button:
-                self.set_frame_window = SetFrameWindow(manager=self.manager)
+                self.set_frame_window = SetFrameWindow(pygame.Rect(1360, 100, 500, 400), manager=self.manager)
                 self.set_frame_res.set_text('ok')
+                self.enable_drawing = True
+
 
         elif event.type == pygame.USEREVENT and event.user_type == pygame_gui.UI_WINDOW_CLOSE:
             if event.ui_element == self.set_mark_window:
@@ -193,17 +262,20 @@ class DebugWindow(UIWindow):
             elif event.ui_element == self.set_frame_window:
                 self.set_frame_window.button_focus = '-'
 
-        if image_mouse_pos and self.enable_drawing:
-            if not self.rect.collidepoint(*mouse_pos) and \
-                    not self.set_mark_window.rect.collidepoint(*mouse_pos):
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    if event.button == 1:  # Left mouse button
-                        self.end_pos = None
-                        self.start_pos = image_mouse_pos
-                        self.drawing = True
-                elif event.type == pygame.MOUSEBUTTONUP:
-                    if event.button == 1:  # Left mouse button
-                        self.drawing = False
+        if self.set_frame_window is not None:  # ต้องมี set_frame_window
+            if image_mouse_pos and self.enable_drawing:
+                if not self.rect.collidepoint(*mouse_pos) and \
+                        not self.set_frame_window.rect.collidepoint(*mouse_pos):
+                    # mouse_pos จะต้องไม่อยู่ใน self และ self.set_frame_window
+                    # จึงจะวาดได้
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+                        if event.button == 1:  # Left mouse button
+                            self.end_pos = None
+                            self.start_pos = image_mouse_pos
+                            self.drawing = True
+                    elif event.type == pygame.MOUSEBUTTONUP:
+                        if event.button == 1:  # Left mouse button
+                            self.drawing = False
 
         if self.end_pos and self.end_pos:
             keys = pygame.key.get_pressed()
@@ -253,24 +325,23 @@ class DebugWindow(UIWindow):
     def _update_(self, draw_frame):
         image_mouse_pos = manager_pos(self.manager_image)
         mouse_pos = pygame.mouse.get_pos()
-        draw_frame.enable_drawing = self.enable_drawing
-
-        if self.set_mark_window and \
-                not self.rect.collidepoint(*mouse_pos) and \
-                not self.set_mark_window.rect.collidepoint(*mouse_pos):
-            if self.drawing:
-                self.end_pos = image_mouse_pos
-
-            if self.set_mark_window.button_focus in ['m1', 'm2']:
-                self.enable_drawing = True
+        # กดปุ่มที่กำหนด และ moues_in_img
+        draw_frame.enableDrawing(self.enable_drawing and self.enable_drawing_if_moues_in_image)
+        if self.set_frame_window is not None:  # ต้องมี set_frame_window
+            if not self.rect.collidepoint(*mouse_pos) and \
+                    not self.set_frame_window.rect.collidepoint(*mouse_pos):
+                self.enable_drawing_if_moues_in_image = True
+                if self.drawing:
+                    self.end_pos = image_mouse_pos
             else:
-                self.enable_drawing = False
+                self.enable_drawing_if_moues_in_image = False
+
 
             if self.start_pos and self.end_pos:
                 draw_frame.add('#crt_drawing', crt=[(255, 255, 0), xyxy2xywh((*self.start_pos, *self.end_pos)), 1])
-                if self.set_mark_window.button_focus in ['m1', 'm2']:
-                    draw_frame.add(f'#{self.set_mark_window.button_focus}',
-                                   crt=[(255, 255, 0), xyxy2xywh((*self.start_pos, *self.end_pos)), 1])
+                # if self.set_mark_window.button_focus in ['m1', 'm2']:
+                #     draw_frame.add(f'#{self.set_mark_window.button_focus}',
+                #                    crt=[(255, 255, 0), xyxy2xywh((*self.start_pos, *self.end_pos)), 1])
 
 
 if __name__ == '__main__':

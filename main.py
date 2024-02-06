@@ -127,7 +127,7 @@ def main(data):
 
                 elif event.ui_element == debug_button:
                     data['mode'] = 'debug'
-                    debug_window = DebugWindow(manager=manager, manager_image=manager_image)
+                    debug_window = DebugWindow(pygame.Rect(1360, 100, 300, 300),manager=manager, manager_image=manager_image)
                 elif event.ui_element == manual_button:
                     data['mode'] = 'manual'
                 elif event.ui_element == auto_button:

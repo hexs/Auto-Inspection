@@ -62,6 +62,9 @@ class DrawFrame:
         self.focus_frame = None
         self.enable_drawing = False
 
+    def enableDrawing(self, val=True):
+        self.enable_drawing = val
+
     def add(self, name, **kwargs):
         self.rect_list[name] = kwargs
         if kwargs.get('r'):
@@ -109,12 +112,13 @@ class DrawFrame:
             # text
             font = pygame.font.Font('freesansbold.ttf', 10)
             text = font.render(f'{k}', True, (0, 0, 0), (255, 255, 255))
-            surface.blit(text, (r[0],r[1]-12))
+            surface.blit(text, (r[0], r[1] - 12))
 
+        pygame.draw.rect(surface,
+                         (0, 0, 0),
+                         re_rect(self.rect_list['#crt_drawing']['crt'][1], 1),
+                         self.rect_list['#crt_drawing']['crt'][2] + 2)
         pygame.draw.rect(surface, *self.rect_list['#crt_drawing']['crt'])
-
-
-
 
         # print(WARNING)
         # pprint(self.rect_list)

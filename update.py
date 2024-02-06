@@ -129,6 +129,6 @@ if __name__ == '__main__':
     update()
     if not is_venv_present():
         create_venv()
-    upgrade_pip()
+    # upgrade_pip()
     activate_venv_and_run_program('InstallPackage.py')
     activate_venv_and_run_program('main.py')
