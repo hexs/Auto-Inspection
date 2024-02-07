@@ -7,19 +7,7 @@ import numpy as np
 from keras import models
 from func.about_image import putTextRect, putTextRectlist
 import sys
-
-BLACK = '\033[90m'
-FAIL = '\033[91m'
-GREEN = '\033[92m'
-WARNING = '\033[93m'
-BLUE = '\033[94m'
-PINK = '\033[95m'
-CYAN = '\033[96m'
-ENDC = '\033[0m'
-BOLD = '\033[1m'
-ITALICIZED = '\033[3m'
-UNDERLINE = '\033[4m'
-
+from func.TextColor import *
 
 class Dtime():
     def __init__(self):
@@ -150,7 +138,7 @@ class Model:
         try:
             self.model = models.load_model(fr'data/{modelname}/model/{self.name}.h5')
         except Exception as e:
-            print(f'{WARNING}function "load_model" error.\n'
+            print(f'{YELLOW}function "load_model" error.\n'
                   f'file error data/{modelname}/model/{self.name}.h5{ENDC}\n'
                   f'{str(e)}')
             # sys.exit()
@@ -158,12 +146,12 @@ class Model:
 
             status_list = json.loads(open(fr'data/{modelname}/model/{self.name}.json').read())
             if status_list != self.status_list:
-                print(f'{WARNING}status_list model != self.status_list')
+                print(f'{YELLOW}status_list model != self.status_list')
                 print(f'status_list from model = {status_list}')
                 print(f'self.status_list       = {self.status_list}{ENDC}')
 
         except Exception as e:
-            print(f'{WARNING}function "load_model" error.\n'
+            print(f'{YELLOW}function "load_model" error.\n'
                   f'file error data/{modelname}/model/{self.name}.json{ENDC}'
                   f'{str(e)}')
             # sys.exit()
@@ -214,9 +202,8 @@ class Mark:
 
 
 class Frames:
-    def __init__(self, name):
-        self.name = name
-        data_all = json.loads(open(f'data/{name}/frames pos.json').read())
+    def __init__(self, path):
+        data_all = json.loads(open(path).read())
         self.frames = {}
         self.models = {}
         self.marks = {}
@@ -250,76 +237,6 @@ class Frames:
                f'{PINK}{BOLD} Frames ╣ {ENDC}{len(self.models)} model is {GREEN}{", ".join(self.models.keys())}{ENDC}\n' \
                f'{PINK}{BOLD}        ╚ {ENDC}{len(self.marks)}  mark  is {GREEN}{", ".join(self.marks.keys())}{ENDC}\n'
 
-    def crop_img(self, img_for_crop):
-        h, w, _ = img_for_crop.shape
-        for name, frame in self.frames.items():
-            x1 = int(frame.x1 * w)
-            y1 = int(frame.y1 * h)
-            x2 = int(frame.x2 * w)
-            y2 = int(frame.y2 * h)
-            frame.img = img_for_crop[y1:y2, x1:x2]
-            frame.img = cv2.resize(frame.img, (180, 180))
-
-    def draw_blink(self, img, name):
-        h, w, _ = img.shape
-        print('name', name)
-        for name, frame in self.frames.items():
-            start_point = int(frame.x1 * w - 10), int(frame.y1 * h - 10)
-            end_point = int(frame.x2 * w + 10), int(frame.y2 * h + 10)
-            drawrect(img, start_point, end_point, (0, 255, 255), 12)
-
-    def draw_frame(self, img, textdata=None):
-        h, w, _ = img.shape
-        for name, mark in self.marks.items():
-            cv2.rectangle(img, *mark.rec_mark(h, w), (0, 255, 255), 2)
-            cv2.rectangle(img, *mark.rec_around(h, w), (0, 255, 255), 2)
-
-        for name, frame in self.frames.items():
-            start_point = int(frame.x1 * w), int(frame.y1 * h)
-            end_point = int(frame.x2 * w), int(frame.y2 * h)
-            img = cv2.rectangle(img, start_point, end_point, (255, 0, 0), frame.color_frame_thickness + 3)
-            drawrect(img, start_point, end_point, frame.color_frame, frame.color_frame_thickness + 1)
-
-        for name, frame in self.frames.items():
-            start_point = int(frame.x1 * w), int(frame.y1 * h)
-            end_point = int(frame.x2 * w), int(frame.y2 * h)
-            if textdata:
-                Abbreviation = {
-                    'ok': 'ok',
-                    'nopart': 'nopart',
-                    'wrongpart': 'w.part',
-                    'wrongpolarity': 'w.pola'
-                }
-                TextRectlist = []
-                if textdata.get('Show name'):
-                    d = f'{frame.name}'
-                    if textdata.get('Change color name'):
-                        d = (d, frame.color_text)
-                    TextRectlist.append(d)
-                if textdata.get('mode_debug'):
-                    d = f'{frame.debug_res_name}'
-                    d = Abbreviation[d] if (d in Abbreviation.keys()) else d
-                    if textdata.get('Change color mode_debug'):
-                        d = (d, frame.color_text)
-                    TextRectlist.append(d)
-                if textdata.get('Show results from predictions'):
-                    d = f'{frame.highest_score_name}'
-                    d = Abbreviation[d] if (d in Abbreviation.keys()) else d
-                    if textdata.get('Change color results from predictions'):
-                        d = (d, frame.color_text)
-                    TextRectlist.append(d)
-                if textdata.get('Show %results from predictions'):
-                    d = f'{frame.highest_score_percent}'
-                    if textdata.get('Change color %results from predictions'):
-                        d = (d, frame.color_text)
-                    TextRectlist.append(d)
-                if textdata.get('Show list class name'):
-                    d = f'{frame.percent_score_list}'
-                    if textdata.get('Change color list class name'):
-                        d = (d, frame.color_text)
-                    TextRectlist.append(d)
-                putTextRectlist(img, TextRectlist, 22, start_point, frame.font_size, 2, font=1, offset=1)
-        return img
 
     def save_mark(self, img):
         h, w, _ = img.shape
@@ -337,31 +254,9 @@ class Frames:
             cv2.imshow('img', img[y1:y2, x1:x2])
 
 
-def predict(frame, Frames):
-    model = Frames.models[frame.model_used]
-    img_array = frame.img[np.newaxis, :]
-    predictions = model.model.predict_on_batch(img_array)
-
-    frame.predictions_score_list = predictions[0]  # [ -6.520611   8.118368 -21.86103   22.21528 ]
-    exp_x = [1.2 ** x for x in frame.predictions_score_list]
-    frame.percent_score_list = [round(x * 100 / sum(exp_x)) for x in exp_x]
-    frame.highest_score_number = np.argmax(frame.predictions_score_list)  # 3
-
-    frame.highest_score_name = model.status_list[frame.highest_score_number]
-    frame.highest_score_percent = frame.percent_score_list[frame.highest_score_number]
-
-    # if frame.highest_score_name:
-    #     frame.color_frame = frame.color_text = frame.K_color[frame.highest_score_name]
-    if frame.highest_score_name in frame.res_show['OK']:
-        frame.color_frame = frame.color_text = (0, 255, 0)
-    else:
-        frame.color_frame = frame.color_text = (0, 0, 255)
-
-    return frame.percent_score_list, predictions[0]
-
 
 if __name__ == '__main__':
-    framesmodel = Frames(rf"data\{'D07 QM7-3238'}\frames pos.json")
+    framesmodel = Frames(rf"..\data\{'D07 QM7-3238'}\frames pos.json")
     print(framesmodel)
     # print(frame.model_used)
 

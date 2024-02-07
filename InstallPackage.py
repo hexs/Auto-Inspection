@@ -1,7 +1,5 @@
 import subprocess
-import sys
-import os
-from TextColor import *
+from func.TextColor import *
 
 
 def installed_packages():

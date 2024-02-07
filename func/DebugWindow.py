@@ -253,8 +253,13 @@ class DebugWindow(UIWindow):
             elif event.ui_element == self.set_frame_button:
                 self.set_frame_window = SetFrameWindow(pygame.Rect(1360, 100, 500, 400), manager=self.manager)
                 self.set_frame_res.set_text('ok')
+                self.set_frame_button.disable()
                 self.enable_drawing = True
-
+        if event.type == pygame_gui.UI_WINDOW_CLOSE:
+            if event.ui_element == self.set_frame_window:
+                self.enable_drawing = False
+                self.set_frame_button.enable()
+                self.set_frame_window = None
 
         elif event.type == pygame.USEREVENT and event.user_type == pygame_gui.UI_WINDOW_CLOSE:
             if event.ui_element == self.set_mark_window:
@@ -322,6 +327,24 @@ class DebugWindow(UIWindow):
                     self.start_pos = self.start_pos[0], self.start_pos[1] + 10
                     self.end_pos = self.end_pos[0], self.end_pos[1] + 10
 
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 4:  # Mouse wheel up
+                    mouse_pos = pygame.mouse.get_pos()
+                    if self.set_frame_window.rect.collidepoint(mouse_pos):
+                        try:
+                            current_text = int(self.set_frame_window.get_text())
+                        except ValueError:
+                            current_text = 0
+                        self.set_frame_window.set_text(str(current_text + 1))
+                elif event.button == 5:  # Mouse wheel down
+                    mouse_pos = pygame.mouse.get_pos()
+                    if self.set_frame_window.rect.collidepoint(mouse_pos):
+                        try:
+                            current_text = int(self.set_frame_window.get_text())
+                        except ValueError:
+                            current_text = 0
+                        self.set_frame_window.set_text(str(current_text - 1))
+
     def _update_(self, draw_frame):
         image_mouse_pos = manager_pos(self.manager_image)
         mouse_pos = pygame.mouse.get_pos()
@@ -336,12 +359,21 @@ class DebugWindow(UIWindow):
             else:
                 self.enable_drawing_if_moues_in_image = False
 
-
             if self.start_pos and self.end_pos:
                 draw_frame.add('#crt_drawing', crt=[(255, 255, 0), xyxy2xywh((*self.start_pos, *self.end_pos)), 1])
                 # if self.set_mark_window.button_focus in ['m1', 'm2']:
                 #     draw_frame.add(f'#{self.set_mark_window.button_focus}',
                 #                    crt=[(255, 255, 0), xyxy2xywh((*self.start_pos, *self.end_pos)), 1])
+
+        if self.drawing:
+            # ถ้าวาด
+            # ให้แสดงข้อความที่ entry_line
+            x, y, w, h = draw_frame.rect_list['#crt_drawing'].rect
+            print(x, y, w, h)
+            self.set_frame_window.frame_x_entry_line.set_text(f'{x}')
+            self.set_frame_window.frame_y_entry_line.set_text(f'{y}')
+            self.set_frame_window.frame_w_entry_line.set_text(f'{w}')
+            self.set_frame_window.frame_h_entry_line.set_text(f'{h}')
 
 
 if __name__ == '__main__':

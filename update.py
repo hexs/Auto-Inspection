@@ -3,8 +3,8 @@ import subprocess
 import socket
 import sys
 
-from TextColor import *
-from InstallPackage import installed_packages, upgrade_pip
+from func.TextColor import *
+from InstallPackage import installed_packages
 
 
 def is_internet_available():

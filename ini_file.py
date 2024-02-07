@@ -1,7 +1,6 @@
 import configparser
-from pprint import pprint
 from typing import Union
-from TextColor import *
+from func.TextColor import *
 
 
 def ini_str_to_python_variable(string: str) -> Union[str, int, float, list, dict, tuple, set]:

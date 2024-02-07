@@ -22,7 +22,6 @@ class LoadWindow(UIFileDialog):
         super().__init__(rect=rect, manager=manager)
 
 
-
 def manager_pos(manager, float=False):
     manager_rect = manager.get_root_container().get_rect()
     x, y, w, h = manager_rect
@@ -126,10 +125,14 @@ def main(data):
                     image_form_cam = data['capture res'][1]
 
                 elif event.ui_element == debug_button:
+                    debug_button.disable()
                     data['mode'] = 'debug'
-                    debug_window = DebugWindow(pygame.Rect(1360, 100, 300, 300),manager=manager, manager_image=manager_image)
+                    debug_window = DebugWindow(pygame.Rect(1360, 100, 300, 300), manager=manager,
+                                               manager_image=manager_image)
                 elif event.ui_element == manual_button:
                     data['mode'] = 'manual'
+
+
                 elif event.ui_element == auto_button:
                     data['mode'] = 'auto'
                 elif event.ui_element == load_button:
@@ -146,11 +149,13 @@ def main(data):
                 image_form_cam = cv2.imread(image_path)
                 image_surface = cvimage_to_pygame(image_form_cam)
 
-            if (event.type == pygame_gui.UI_WINDOW_CLOSE
-                    and event.ui_element == file_dialog):
-                load_button.enable()
-                file_dialog = None
-
+            if event.type == pygame_gui.UI_WINDOW_CLOSE:
+                if event.ui_element == file_dialog:
+                    load_button.enable()
+                    file_dialog = None
+                if event.ui_element == debug_window:
+                    debug_button.enable()
+                    debug_window = None
 
         fps_label.set_text(f'{clock.get_fps():.0f}fps')
         mouse_pos_label.set_text(f'mouse pos:{pygame.mouse.get_pos()}')

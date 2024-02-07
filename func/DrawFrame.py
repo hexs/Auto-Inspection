@@ -1,11 +1,11 @@
 import random
-import pygame_gui
+
 import pygame
+
 from func.print_color import *
-from pprint import pprint
 
 
-def re_rect(rect, offset=0):
+def re_rect(rect):
     x, y, w, h = rect
     if w < 0:
         w = -w
@@ -13,11 +13,16 @@ def re_rect(rect, offset=0):
     if h < 0:
         h = -h
         y = y - h
-    x = x - offset
-    y = y - offset
-    w = w + offset * 2
-    h = h + offset * 2
     return x, y, w, h
+
+
+def inCreaseSize(rect: pygame.Rect, increase_amount: int) -> pygame.Rect:
+    if isinstance(rect, tuple):
+        rect = pygame.Rect(*rect)
+    return pygame.Rect(rect.x - increase_amount,
+                       rect.y - increase_amount,
+                       rect.width + 2 * increase_amount,
+                       rect.height + 2 * increase_amount)
 
 
 def rect_2x(rect, times=2):
@@ -47,31 +52,55 @@ def manager_pos(manager, float=False):
         return None
 
 
+class CRT:
+    def __init__(self, color: tuple, rect: pygame.Rect, thick: int):
+        self.color = color
+        self.rect = rect
+        self.thick = thick
+        self.attributes = [self.color, self.rect, self.thick]
+        self.index = 0
+        self.outer_rect = 0
+
+    def set_outer_rect(self, v: int):
+        self.outer_rect = v
+
+    def __str__(self):
+        return f'{GREEN}{self.color}{BLUE} {self.rect}{ENDC} {self.thick}'
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.index < len(self.attributes):
+            res = self.attributes[self.index]
+            self.index += 1
+            return res
+        else:
+            self.index = 0
+            raise StopIteration
+
+
 class DrawFrame:
     def __init__(self, surface, manager=None):
         self.surface = surface
         self.manager = manager
         self.rect_list = {
-            '#crt_drawing': {'crt': [(255, 255, 0), (200, 100, 100, 100), 1]},
-            '#m1': {'crt': [(255, 255, 255), (300, 100, 20, 30), 1]},
-            '#m2': {'crt': [(255, 255, 255), (20, 30, 20, 30), 1]},
+            '#crt_drawing': CRT((255, 255, 0), pygame.Rect(200, 100, 100, 100), 1),
+            '#m1': CRT((255, 255, 255), pygame.Rect(300, 100, 20, 30), 1),
+            '#m2': CRT((255, 255, 255), pygame.Rect(20, 30, 20, 30), 1),
 
         }
-        # self.add('a3', crt=[(255, 0, 255), (200, 200, 100, 100), 1])
-        # self.add('a3', r=(300, 200, 100, 100),outer_rect=4)
         self.focus_frame = None
         self.enable_drawing = False
 
     def enableDrawing(self, val=True):
         self.enable_drawing = val
 
-    def add(self, name, **kwargs):
-        self.rect_list[name] = kwargs
-        if kwargs.get('r'):
-            r = kwargs.get('r')
-            c = kwargs.get('c') if kwargs.get('c') else (255, 255, 255)
-            t = kwargs.get('t') if kwargs.get('t') else 1
-            self.rect_list[name]['crt'] = [c, r, t]
+    def add(self, name, crt):
+        if isinstance(crt, CRT):
+            self.rect_list[name] = crt
+        elif isinstance(crt, list):
+            self.rect_list[name] = CRT(*crt)
 
     def update(self, surface):
         mouse_x, mouse_y = pygame.mouse.get_pos()
@@ -100,55 +129,21 @@ class DrawFrame:
         for k, v in self.rect_list.items():
             if k == '#crt_drawing':
                 continue
-            c, r, t = v['crt']
-            outer_rect = v.get('outer_rect')
-
             # frame
-            pygame.draw.rect(surface, (0, 0, 0), re_rect(r, 1), t + 2)
-            pygame.draw.rect(surface, c, r, t)
-            if outer_rect:
-                pygame.draw.rect(surface, (20, 20, 20), rect_2x(r, outer_rect), 3)
+            pygame.draw.rect(surface, (0, 0, 0), inCreaseSize(v.rect, 1), v.thick + 2)
+            pygame.draw.rect(surface, *v)
+            if v.outer_rect:
+                pygame.draw.rect(surface, (20, 20, 20), rect_2x(v.rect, v.outer_rect), 3)
 
             # text
             font = pygame.font.Font('freesansbold.ttf', 10)
             text = font.render(f'{k}', True, (0, 0, 0), (255, 255, 255))
-            surface.blit(text, (r[0], r[1] - 12))
+            surface.blit(text, v.rect.move(0, 12))
 
-        pygame.draw.rect(surface,
-                         (0, 0, 0),
-                         re_rect(self.rect_list['#crt_drawing']['crt'][1], 1),
-                         self.rect_list['#crt_drawing']['crt'][2] + 2)
-        pygame.draw.rect(surface, *self.rect_list['#crt_drawing']['crt'])
+        # frame
+        v = self.rect_list['#crt_drawing']
+        pygame.draw.rect(surface, (0, 0, 0), inCreaseSize(v.rect, 1), v.thick + 2)
+        pygame.draw.rect(surface, *v)
 
-        # print(WARNING)
-        # pprint(self.rect_list)
-        # print(ENDC)
+
         return surface
-
-
-if __name__ == '__main__':
-    import pygame
-    import sys
-
-    pygame.init()
-
-    width, height = 800, 600
-    display = pygame.display.set_mode((width, height))
-    pygame.display.set_caption("Pygame Rectangle Example")
-
-    surface = pygame.Surface((700, 500))
-    draw_frame = DrawFrame(surface)
-
-    # Game loop
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-
-        draw_frame.update(surface, (10, 10))
-
-        display.blit(surface, (50, 50))
-        pygame.display.flip()
-
-    pygame.quit()
