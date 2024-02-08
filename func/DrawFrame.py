@@ -54,10 +54,11 @@ def manager_pos(manager, float=False):
 
 class CRT:
     def __init__(self, color: tuple, rect: pygame.Rect, thick: int):
+        if isinstance(rect,tuple):
+            rect = pygame.Rect(rect)
         self.color = color
         self.rect = rect
         self.thick = thick
-        self.attributes = [self.color, self.rect, self.thick]
         self.index = 0
         self.outer_rect = 0
 
@@ -71,10 +72,13 @@ class CRT:
         return self
 
     def __next__(self):
-        if self.index < len(self.attributes):
-            res = self.attributes[self.index]
-            self.index += 1
-            return res
+        self.index += 1
+        if self.index == 1:
+            return self.color
+        elif self.index == 2:
+            return self.rect
+        elif self.index == 3:
+            return self.thick
         else:
             self.index = 0
             raise StopIteration
@@ -85,7 +89,7 @@ class DrawFrame:
         self.surface = surface
         self.manager = manager
         self.rect_list = {
-            '#crt_drawing': CRT((255, 255, 0), pygame.Rect(200, 100, 100, 100), 1),
+            # '#crt_drawing': CRT((255, 255, 0), pygame.Rect(200, 100, 100, 100), 1),
             '#m1': CRT((255, 255, 255), pygame.Rect(300, 100, 20, 30), 1),
             '#m2': CRT((255, 255, 255), pygame.Rect(20, 30, 20, 30), 1),
 
@@ -99,7 +103,7 @@ class DrawFrame:
     def add(self, name, crt):
         if isinstance(crt, CRT):
             self.rect_list[name] = crt
-        elif isinstance(crt, list):
+        elif isinstance(crt, list) or isinstance(crt, tuple):
             self.rect_list[name] = CRT(*crt)
 
     def update(self, surface):
@@ -141,9 +145,9 @@ class DrawFrame:
             surface.blit(text, v.rect.move(0, 12))
 
         # frame
-        v = self.rect_list['#crt_drawing']
-        pygame.draw.rect(surface, (0, 0, 0), inCreaseSize(v.rect, 1), v.thick + 2)
-        pygame.draw.rect(surface, *v)
-
+        if self.rect_list.get('#crt_drawing'):
+            v = self.rect_list['#crt_drawing']
+            pygame.draw.rect(surface, (0, 0, 0), inCreaseSize(v.rect, 1), v.thick + 2)
+            pygame.draw.rect(surface, *v)
 
         return surface

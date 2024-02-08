@@ -49,29 +49,29 @@ def ini_to_dict(filename, show=None):
     return ini_dict
 
 
-d = {
-    'd1': {
-        'option1': 4,
-        'option2': 5,
-        'option3': 8,
-        'option4': 9,
-    },
-    'd2': {
-        'option1': 4,
-        'option2': 5,
-        'option3': 18,
-        'option4': 19
-    },
-    'd3': {
-        'option1': 4,
-        'option2': 5,
-        'option3': 18,
-        'option4': 19
-    }
-}
-intersec = set(d['d1'].items())
-for k,v in d.items():
-    intersec = intersec.intersection(set(v.items()))
-
-print(dict(intersec))
+# d = {
+#     'd1': {
+#         'option1': 4,
+#         'option2': 5,
+#         'option3': 8,
+#         'option4': 9,
+#     },
+#     'd2': {
+#         'option1': 4,
+#         'option2': 5,
+#         'option3': 18,
+#         'option4': 19
+#     },
+#     'd3': {
+#         'option1': 4,
+#         'option2': 5,
+#         'option3': 18,
+#         'option4': 19
+#     }
+# }
+# intersec = set(d['d1'].items())
+# for k,v in d.items():
+#     intersec = intersec.intersection(set(v.items()))
+#
+# print(dict(intersec))
 

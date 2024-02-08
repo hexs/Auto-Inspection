@@ -1,127 +1,54 @@
+import configparser
 import json
+import os
 import random
 import time
 from datetime import datetime
+from pprint import pprint
 import cv2
 import numpy as np
-from keras import models
+from func.Rectang import Rectang
+# from keras import models
 from func.about_image import putTextRect, putTextRectlist
 import sys
 from func.TextColor import *
-
-class Dtime():
-    def __init__(self):
-        self.t1 = {}  # {t1:datetime}
-        self.s_list = {}  # {t1:[]}
-
-    def start(self, t):
-        self.t1[t] = datetime.now()
-
-    def stop(self, t):
-        t2 = datetime.now()
-        dt_seconds = (t2 - self.t1[t]).total_seconds()
-        if t not in self.s_list.keys():
-            self.s_list[t] = []
-        self.s_list[t].append(dt_seconds)
-
-    def reset(self):
-        for i in range(len(self.s_list)):
-            self.s_list[i] = []
-
-    def show(self):
-        try:
-            for t, v in self.s_list.items():
-                dtime = self.s_list[t][-1]
-                lenlist = len(self.s_list[t])
-                mean = f'{sum(self.s_list[t]) / lenlist:.3f}'
-                tmin = f'{min(self.s_list[t]):.3f}'
-                tmax = f'{max(self.s_list[t]):.3f}'
-
-                print(f'{dtime:.3f}s / min = {tmin}s / max = {tmax}s / mean = {mean}s  <--{t} {lenlist}')
-            print()
-        except:
-            pass
+from func.ini_file import ini_to_dict, dict_to_ini
+import pygame
 
 
-def drawline(img, pt1, pt2, color, thickness=1, gap=10):
-    dist = ((pt1[0] - pt2[0]) ** 2 + (pt1[1] - pt2[1]) ** 2) ** .5
-    pts = []
-    for i in np.arange(0, dist, gap):
-        r = i / dist
-        x = int((pt1[0] * (1 - r) + pt2[0] * r) + .5)
-        y = int((pt1[1] * (1 - r) + pt2[1] * r) + .5)
-        p = (x, y)
-        pts.append(p)
-
-    e = pts[0]
-    i = 0
-    for p in pts:
-        s = e
-        e = p
-        if i % 2 == 1:
-            cv2.line(img, s, e, color, thickness)
-        i += 1
+def to_xydxdy(x1, y1, w, h, shape):
+    x = (x1 + w / 2) / shape[0]
+    y = (y1 + h / 2) / shape[1]
+    dx = w / shape[0]
+    dy = h / shape[1]
+    return x, y, dx, dy
 
 
-def drawpoly(img, pts, color, thickness=1):
-    for i in range(len(pts)):
-        s = pts[i - 1]
-        e = pts[i]
-        drawline(img, s, e, color, thickness)
-
-
-def drawrect(img, pt1, pt2, color, thickness=1):
-    pts = [pt1, (pt2[0], pt1[1]), pt2, (pt1[0], pt2[1])]
-    drawpoly(img, pts, color, thickness)
 
 
 class Frame:
-    def __init__(self, name, x, y, dx, dy, model_used, res_show, pcb_frame_name=None):
+    def __init__(self, name: str, rectang: Rectang, model_used: str, pcb_frame_name=None):
         self.name = name
         if pcb_frame_name:
             self.pcb_frame_name = pcb_frame_name
         else:
             self.pcb_frame_name = name
-        self.x = x
-        self.y = y
-        self.dx = dx
-        self.dy = dy
+        self.rect = rectang
         self.model_used = model_used
-        self.res_show = res_show
-        self.x1 = x - dx / 2
-        self.y1 = y - dy / 2
-        self.x2 = x + dx / 2
-        self.y2 = y + dy / 2
+        self.res_show = None
         self.img = None
         self.debug_res_name = '-'
         self.reset_result()
-        self.K_color = {
-            'ok': (0, 255, 0),
-            'nopart': (0, 0, 255),
-            'wrongpart': (0, 150, 255),
-            'wrongpolarity': (150, 0, 255)
-        }
 
     def __str__(self):
-        return (f'{PINK}Frame '
-                f'{GREEN}{self.name}{ENDC}')
+        return (f'{PINK}Frame {GREEN}{self.name}{ENDC} ({self.rect.__str__()})')
 
     def reset_result(self):
-        self.color_frame = (0, 255, 255)
-        self.color_frame_thickness = 5
-        self.color_text = (255, 255, 255)
-        self.font_size = 2.5
         self.predictions_score_list = None  # [ -6.520611   8.118368 -21.86103   22.21528 ]
         self.percent_score_list = None  # [3.3125e-11 7.5472e-05 7.2094e-18 9.9999e+01]
         self.highest_score_number = None  # ตำแหน่งไหน # 3
         self.highest_score_percent = None
         self.highest_score_name = None
-
-    def resShow(self):
-        for key, values in self.res_show.items():
-            if self.highest_score_name in values:
-                return key
-        return self.highest_score_name
 
 
 class Model:
@@ -131,8 +58,7 @@ class Model:
         self.model = None
 
     def __str__(self):
-        return (f'{BLUE}Model '
-                f'{GREEN}{self.name}{ENDC}')
+        return (f'{BLUE}Model {GREEN}{self.name}{ENDC}')
 
     def load_model(self, modelname):
         try:
@@ -142,14 +68,13 @@ class Model:
                   f'file error data/{modelname}/model/{self.name}.h5{ENDC}\n'
                   f'{str(e)}')
             # sys.exit()
-        try:
 
+        try:
             status_list = json.loads(open(fr'data/{modelname}/model/{self.name}.json').read())
             if status_list != self.status_list:
                 print(f'{YELLOW}status_list model != self.status_list')
                 print(f'status_list from model = {status_list}')
                 print(f'self.status_list       = {self.status_list}{ENDC}')
-
         except Exception as e:
             print(f'{YELLOW}function "load_model" error.\n'
                   f'file error data/{modelname}/model/{self.name}.json{ENDC}'
@@ -158,115 +83,68 @@ class Model:
 
 
 class Mark:
-    def __init__(self, name, x, y, dx, dy, k):
+    def __init__(self, name, rect: Rectang, k):
         self.name = name
-        self.x = x
-        self.y = y
-        self.dx = dx
-        self.dy = dy
+        self.rect = rect
         self.k = k
 
-        self.x1 = x - dx / 2
-        self.y1 = y - dy / 2
-        self.x2 = x + dx / 2
-        self.y2 = y + dy / 2
-
     def __str__(self):
-        return (f'{CYAN}Mark '
-                f'{GREEN}{self.name}{ENDC}')
-
-    def rec_around(self, h, w):
-        x1px = int(self.x1 * w)
-        y1px = int(self.y1 * h)
-        x2px = int(self.x2 * w)
-        y2px = int(self.y2 * h)
-        kx = int((x2px - x1px) * self.k)
-        ky = int((y2px - y1px) * self.k)
-        return (x1px - kx, y1px - ky), (x2px + kx, y2px + ky)
-
-    def rec_mark(self, h, w):
-        x1px = int(self.x1 * w)
-        y1px = int(self.y1 * h)
-        x2px = int(self.x2 * w)
-        y2px = int(self.y2 * h)
-        return (x1px, y1px), (x2px, y2px)
-
-    def xpx(self, h, w):
-        return int(self.x * w)
-
-    def ypx(self, h, w):
-        return int(self.y * h)
-
-    def xypx(self, h, w):
-        return self.xpx(h, w), self.ypx(h, w)
+        return (f'{CYAN}Mark {GREEN}{self.name}{ENDC}')
 
 
 class Frames:
-    def __init__(self, path):
-        data_all = json.loads(open(path).read())
+    def __init__(self, path: os.path):
+        self.path = path
+        self.frames_path = os.path.join(self.path, 'ini_frames.ini')
+        self.models_path = os.path.join(self.path, 'ini_models.ini')
+        self.marks_path = os.path.join(self.path, 'ini_marks.ini')
+        self.name = os.path.basename(self.path)
         self.frames = {}
         self.models = {}
         self.marks = {}
 
-        for name, v in data_all['frames'].items():
-            x = v['x']
-            y = v['y']
-            dx = v['dx']
-            dy = v['dy']
-            model_used = v['model_used']
-            res_show = v['res_show']
-            pcb_frame_name = v.get('pcb_frame_name')
-            self.frames[name] = Frame(name, x, y, dx, dy, model_used, res_show, pcb_frame_name)
-        for name, v in data_all['models'].items():
-            status_list = sorted(v['status_list'])
-            self.models[name] = Model(name, status_list)
-        if data_all.get('marks'):
-            for name, v in data_all['marks'].items():
-                x = v['x']
-                y = v['y']
-                dx = v['dx']
-                dy = v['dy']
-                k = v['k']
-                self.marks[name] = Mark(name, x, y, dx, dy, k)
+        frames = ini_to_dict(self.frames_path, )
+        models = ini_to_dict(self.models_path, )
+        marks = ini_to_dict(self.marks_path, )
+        pprint(marks)
+        for k, v in frames.items():
+            self.frames[k] = Frame(k, Rectang(*v['xydxdy']), v['model_used'])
+        for k, v in models.items():
+            self.models[k] = Model(k, v['status_list'])
+        for k, v in marks.items():
+            self.marks[k] = Mark(k, Rectang(*v['xydxdy']), Rectang(*v['area_xydxdy']))
 
-        self.len = len(self.frames)
-        self.color_frame = (255, 255, 255)
+        for k, v in self.frames.items():
+            print(k, v)
+        for k, v in self.models.items():
+            print(k, v)
+        for k, v in self.marks.items():
+            print(k, v)
 
     def __str__(self):
         return f'{PINK}{BOLD}        ╔ {ENDC}{len(self.frames)} frame is {GREEN}{", ".join(self.frames.keys())}{ENDC}\n' \
                f'{PINK}{BOLD} Frames ╣ {ENDC}{len(self.models)} model is {GREEN}{", ".join(self.models.keys())}{ENDC}\n' \
                f'{PINK}{BOLD}        ╚ {ENDC}{len(self.marks)}  mark  is {GREEN}{", ".join(self.marks.keys())}{ENDC}\n'
 
-
     def save_mark(self, img):
         h, w, _ = img.shape
         for name, mark in self.marks.items():
-            x = mark.x
-            y = mark.y
-            dx = mark.dx
-            dy = mark.dy
-            x1 = int((x - dx / 2) * w)
-            y1 = int((y - dy / 2) * h)
-            x2 = int((x + dx / 2) * w)
-            y2 = int((y + dy / 2) * h)
+            x1, y1, x2, y2, = mark.rect.to_pix_xyxy()
             print(f'{GREEN}save "data/{self.name}/{name}.png"{ENDC}')
             cv2.imwrite(f'data/{self.name}/{name}.png', img[y1:y2, x1:x2])
-            cv2.imshow('img', img[y1:y2, x1:x2])
-
 
 
 if __name__ == '__main__':
-    framesmodel = Frames(rf"..\data\{'D07 QM7-3238'}\frames pos.json")
-    print(framesmodel)
-    # print(frame.model_used)
+    frames = Frames(os.path.join("..", "data", 'D07 QM7-3238'))
+    print(frames)
 
-    # img = np.full((1080, 1920, 3), (10, 10, 10), np.uint8)
-    # frames = Frames(json.loads(open(r"data\D07\frames pos.json").read()))
-    # frames.add_mark(json.loads(open(rf"data\D07\mark pos.json").read()))
-    # print(frames)
-    # print(frames.frames[0])
-    # print(frames.frames[0].x)
-    #
-    # frames.draw_frame(img)
-    # cv2.imshow('img', img)
-    # cv2.waitKey(0)
+# img = np.full((1080, 1920, 3), (10, 10, 10), np.uint8)
+# frames = Frames(json.loads(open(r"data\D07\frames pos.json").read()))
+# frames.add_mark(json.loads(open(rf"data\D07\mark pos.json").read()))
+# print(frames)
+# print(frames.frames[0])
+# print(frames.frames[0].x)
+#
+# frames.draw_frame(img)
+# cv2.imshow('img', img)
+# cv2.waitKey(0)

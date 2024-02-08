@@ -28,7 +28,7 @@ def capture(data):
 def req_io_box(data):
     import requests
     import time
-    from Frames import FAIL, ENDC, WARNING, UNDERLINE, PINK
+    from func.TextColor import *
     time.sleep(5)
 
     while not stop_event.is_set():
@@ -65,7 +65,7 @@ def req_io_box(data):
 def printdata(data):
     import time
     from pprint import pprint
-    from Frames import PINK, ENDC, UNDERLINE
+    from func.TextColor import *
     while data['is_running']:
         print(PINK, UNDERLINE)
         pprint(data['requests']['read data'])

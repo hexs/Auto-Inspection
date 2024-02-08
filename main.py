@@ -9,7 +9,7 @@ from pygame_gui.core.interfaces import IUIManagerInterface
 import pygame
 import pygame_gui
 from pygame_gui.core import ObjectID
-from pygame_gui.elements import UILabel, UITextBox, UIButton, UIHorizontalSlider
+from pygame_gui.elements import UILabel, UITextBox, UIButton, UIHorizontalSlider, UISelectionList
 from pygame_gui.elements import UIWindow, UIPanel, UIImage
 from pygame_gui.windows import UIFileDialog
 
@@ -44,10 +44,13 @@ def cvimage_to_pygame(image):
 
 def main(data):
     import random
+    import string
     from pygame_gui.core.utility import create_resource_path
     from func.LoadFileWindow import LoadFileWindow
     from func.DebugWindow import DebugWindow
-    from func.DrawFrame import DrawFrame
+    from func.DrawFrame import DrawFrame, CRT
+    from func.Frames import Frames
+    from func.Rectang import Rectang
     from func.about_point import xyxy2xywh
 
     pygame.init()
@@ -81,13 +84,20 @@ def main(data):
                         object_id=ObjectID(class_id='@maximize', object_id='#Button'))
     close = UIButton(pygame.Rect((1920 - 45 * 1, 0), (45, 30)), '', manager,
                      object_id=ObjectID(class_id='@close', object_id='#Button'))
-    debug_button = UIButton(pygame.Rect((160 + 60 * 0, 30), (60, 28)), 'debug', manager)
-    manual_button = UIButton(pygame.Rect((160 + 60 * 1, 30), (60, 28)), 'manual', manager)
-    auto_button = UIButton(pygame.Rect((160 + 60 * 2, 30), (60, 28)), 'auto', manager)
-    capture_button = UIButton(pygame.Rect((160 + 60 * 4, 30), (60, 28)), 'capture', manager)
-    load_button = UIButton(pygame.Rect((160 + 60 * 5, 30), (60, 28)), 'Load Image', manager)
+
+    model_list_selection_list = None
+    model_name = ''
+    select_model_button = UIButton(pygame.Rect((0, 30, 60, 28)), 'selection', manager)
+
+    capture_button = UIButton(pygame.Rect((1100 + 60 * 0, 30), (60, 28)), 'capture', manager)
+    load_button = UIButton(pygame.Rect((1100 + 60 * 1, 30), (60, 28)), 'Load Image', manager)
+    debug_button = UIButton(pygame.Rect((1100 + 60 * 4, 30), (60, 28)), 'debug', manager)
+    manual_button = UIButton(pygame.Rect((1100 + 60 * 5, 30), (60, 28)), 'manual', manager)
+    auto_button = UIButton(pygame.Rect((1100 + 60 * 6, 30), (60, 28)), 'auto', manager)
+
     file_dialog = None
 
+    model_name_label = UILabel(pygame.Rect(10, 8, 100, 20), "", manager)
     fps_label = UILabel(pygame.Rect(10, 1060, 50, 20), "-", manager)
     mouse_pos_label = UILabel(pygame.Rect(80, 1060, 200, 20), "-", manager, )
     image_pos_label = UILabel(pygame.Rect(270, 1060, 500, 20), "-", manager, )
@@ -114,6 +124,8 @@ def main(data):
             if event.type == pygame.QUIT:
                 data['is_running'] = False
             elif event.type == pygame_gui.UI_BUTTON_PRESSED:
+                if model_list_selection_list is not None:
+                    model_list_selection_list.kill()
                 if event.ui_element == minimize:
                     pygame.display.iconify()
                 elif event.ui_element == maximize:
@@ -123,7 +135,13 @@ def main(data):
 
                 elif event.ui_element == capture_button:
                     image_form_cam = data['capture res'][1]
-
+                elif event.ui_element == select_model_button:
+                    model_list = os.listdir('data')
+                    model_list.append('## add new model ##')
+                    model_list_selection_list = UISelectionList(relative_rect=pygame.Rect((0, 57, 250, 100)),
+                                                                item_list=model_list,
+                                                                manager=manager
+                                                                )
                 elif event.ui_element == debug_button:
                     debug_button.disable()
                     data['mode'] = 'debug'
@@ -149,18 +167,36 @@ def main(data):
                 image_form_cam = cv2.imread(image_path)
                 image_surface = cvimage_to_pygame(image_form_cam)
 
-            if event.type == pygame_gui.UI_WINDOW_CLOSE:
+            if event.type == pygame_gui.UI_WINDOW_CLOSE:  # 32880
                 if event.ui_element == file_dialog:
                     load_button.enable()
                     file_dialog = None
                 if event.ui_element == debug_window:
                     debug_button.enable()
                     debug_window = None
+            if event.type == 32877:  # เลือก model
+                if event.ui_element == model_list_selection_list:
+                    if event.text == '## add new model ##':
+                        rand = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
+                        os.mkdir(f'data/{rand}')
+                        model_name = rand
+                    else:
+                        model_name = event.text
+                        frames = Frames(os.path.join("data", model_name))
+                        print(frames)
+                        for name, frame in frames.frames.items():
+                            draw_frame.add(name,
+                                           CRT(
+                                               (255, 255, 0),
+                                               frame.rect.to_pix_xywh(shape=(1333, 1000)),
+                                               1)
+                                           )
 
-        fps_label.set_text(f'{clock.get_fps():.0f}fps')
-        mouse_pos_label.set_text(f'mouse pos:{pygame.mouse.get_pos()}')
-        image_pos_label.set_text(f"Image mouse pos:{manager_pos(manager_image)}")
-        status_cam.set_text(f"status cam:{data['capture res'][0]}")
+                            model_name_label.set_text(model_name)
+                            fps_label.set_text(f'{clock.get_fps():.0f}fps')
+                            mouse_pos_label.set_text(f'mouse pos:{pygame.mouse.get_pos()}')
+                            image_pos_label.set_text(f"Image mouse pos:{manager_pos(manager_image)}")
+                            status_cam.set_text(f"status cam:{data['capture res'][0]}")
         try:
             log_label.set_text(f"{debug_window.start_pos, debug_window.end_pos}")
         except:

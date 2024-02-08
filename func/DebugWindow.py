@@ -9,6 +9,7 @@ import random
 from pygame_gui.core.interfaces import IWindowInterface, IUIManagerInterface
 from func.about_point import xyxy2xywh
 from func.SelectionFrameList import SelectionFrameList
+from func.DrawFrame import DrawFrame
 
 
 def re_rect(rect, offset=0):
@@ -223,7 +224,7 @@ class DebugWindow(UIWindow):
         self.start_pos = None
         self.end_pos = None
         self.drawing = False
-
+        self.frame_adj = {'x': 0, 'y': 0, 'w': 0, 'h': 0, 'enter': ''}
         self.manager = manager
         self.manager_image = manager_image
         self.set_mark_button = UIButton(pygame.Rect((10, 10 + 30 * 1), (100, 30)), 'set mark',
@@ -245,8 +246,9 @@ class DebugWindow(UIWindow):
 
         mouse_pos = pygame.mouse.get_pos()  # ตำแหน่ง mouse
         image_mouse_pos = manager_pos(self.manager_image)  # ตำแหน่ง mouse ในภาพ
+        keys = pygame.key.get_pressed()
 
-        if event.type == pygame_gui.UI_BUTTON_PRESSED:
+        if event.type == pygame_gui.UI_BUTTON_PRESSED:  # click ที่ button :
             if event.ui_element == self.set_mark_button:
                 self.set_mark_window = SetMarkWindow(pygame.Rect(1360, 100, 500, 400), manager=self.manager)
                 self.set_mark_res.set_text('ok')
@@ -255,22 +257,29 @@ class DebugWindow(UIWindow):
                 self.set_frame_res.set_text('ok')
                 self.set_frame_button.disable()
                 self.enable_drawing = True
-        if event.type == pygame_gui.UI_WINDOW_CLOSE:
+
+        elif event.type == pygame_gui.UI_WINDOW_CLOSE:  # close widow
             if event.ui_element == self.set_frame_window:
                 self.enable_drawing = False
                 self.set_frame_button.enable()
                 self.set_frame_window = None
 
-        elif event.type == pygame.USEREVENT and event.user_type == pygame_gui.UI_WINDOW_CLOSE:
-            if event.ui_element == self.set_mark_window:
-                self.set_mark_window.button_focus = '-'
-            elif event.ui_element == self.set_frame_window:
-                self.set_frame_window.button_focus = '-'
+        elif event.type == pygame.USEREVENT:
+            if event.dict['user_type'] == 32874:  # กด enter ใน entry_line :
+                if event.ui_element == self.set_frame_window.frame_x_entry_line:
+                    self.frame_adj['enter'] = 'x'
+                if event.ui_element == self.set_frame_window.frame_y_entry_line:
+                    self.frame_adj['enter'] = 'y'
+                if event.ui_element == self.set_frame_window.frame_w_entry_line:
+                    self.frame_adj['enter'] = 'w'
+                if event.ui_element == self.set_frame_window.frame_h_entry_line:
+                    self.frame_adj['enter'] = 'h'
+
 
         if self.set_frame_window is not None:  # ต้องมี set_frame_window
-            if image_mouse_pos and self.enable_drawing:
+            if image_mouse_pos and self.enable_drawing:  # mouse อยู่ใน image
                 if not self.rect.collidepoint(*mouse_pos) and \
-                        not self.set_frame_window.rect.collidepoint(*mouse_pos):
+                        not self.set_frame_window.rect.collidepoint(*mouse_pos):  # mouse ไม่อยู่อยู่ใน windows ต่างๆ
                     # mouse_pos จะต้องไม่อยู่ใน self และ self.set_frame_window
                     # จึงจะวาดได้
                     if event.type == pygame.MOUSEBUTTONDOWN:
@@ -282,70 +291,29 @@ class DebugWindow(UIWindow):
                         if event.button == 1:  # Left mouse button
                             self.drawing = False
 
-        if self.end_pos and self.end_pos:
-            keys = pygame.key.get_pressed()
-            if event.type == pygame.KEYDOWN:
-                if event.dict['key'] == pygame.K_RIGHT:
-                    self.start_pos = self.start_pos[0] + 1, self.start_pos[1]
-                    self.end_pos = self.end_pos[0] + 1, self.end_pos[1]
-                elif event.dict['key'] == pygame.K_LEFT:
-                    self.start_pos = self.start_pos[0] - 1, self.start_pos[1]
-                    self.end_pos = self.end_pos[0] - 1, self.end_pos[1]
-                elif event.dict['key'] == pygame.K_UP:
-                    self.start_pos = self.start_pos[0], self.start_pos[1] - 1
-                    self.end_pos = self.end_pos[0], self.end_pos[1] - 1
-                elif event.dict['key'] == pygame.K_DOWN:
-                    self.start_pos = self.start_pos[0], self.start_pos[1] + 1
-                    self.end_pos = self.end_pos[0], self.end_pos[1] + 1
-
-                elif event.dict['key'] == pygame.K_KP_PLUS:
-                    if keys[pygame.K_LCTRL] or keys[pygame.K_RCTRL]:
-                        self.end_pos = self.end_pos[0] + 1, self.end_pos[1]
-                    else:
-                        self.end_pos = self.end_pos[0], self.end_pos[1] + 1
-                elif event.dict['key'] == pygame.K_KP_MINUS:
-                    if keys[pygame.K_LCTRL] or keys[pygame.K_RCTRL]:
-                        self.end_pos = self.end_pos[0] - 1, self.end_pos[1]
-                    else:
-                        self.end_pos = self.end_pos[0], self.end_pos[1] - 1
-                elif event.dict['key'] == pygame.K_KP_MULTIPLY:
-                    self.end_pos = self.end_pos[0] + 1, self.end_pos[1]
-                elif event.dict['key'] == pygame.K_KP_DIVIDE:
-                    self.end_pos = self.end_pos[0] - 1, self.end_pos[1]
-
-            elif event.type == pygame.TEXTINPUT:
-                if event.dict['text'] == 'd':
-                    self.start_pos = self.start_pos[0] + 10, self.start_pos[1]
-                    self.end_pos = self.end_pos[0] + 10, self.end_pos[1]
-                elif event.dict['text'] == 'a':
-                    self.start_pos = self.start_pos[0] - 10, self.start_pos[1]
-                    self.end_pos = self.end_pos[0] - 10, self.end_pos[1]
-                elif event.dict['text'] == 'w':
-                    self.start_pos = self.start_pos[0], self.start_pos[1] - 10
-                    self.end_pos = self.end_pos[0], self.end_pos[1] - 10
-                elif event.dict['text'] == 's':
-                    self.start_pos = self.start_pos[0], self.start_pos[1] + 10
-                    self.end_pos = self.end_pos[0], self.end_pos[1] + 10
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 4:  # Mouse wheel up
-                    mouse_pos = pygame.mouse.get_pos()
-                    if self.set_frame_window.rect.collidepoint(mouse_pos):
-                        try:
-                            current_text = int(self.set_frame_window.get_text())
-                        except ValueError:
-                            current_text = 0
-                        self.set_frame_window.set_text(str(current_text + 1))
-                elif event.button == 5:  # Mouse wheel down
-                    mouse_pos = pygame.mouse.get_pos()
-                    if self.set_frame_window.rect.collidepoint(mouse_pos):
-                        try:
-                            current_text = int(self.set_frame_window.get_text())
-                        except ValueError:
-                            current_text = 0
-                        self.set_frame_window.set_text(str(current_text - 1))
+                    if self.set_frame_window.frame_x_entry_line.rect.collidepoint(mouse_pos):
+                        self.frame_adj['x'] += 20 if keys[pygame.K_LCTRL] or keys[pygame.K_RCTRL] else 1
+                    elif self.set_frame_window.frame_y_entry_line.rect.collidepoint(mouse_pos):
+                        self.frame_adj['y'] += 20 if keys[pygame.K_LCTRL] or keys[pygame.K_RCTRL] else 1
+                    elif self.set_frame_window.frame_w_entry_line.rect.collidepoint(mouse_pos):
+                        self.frame_adj['w'] += 20 if keys[pygame.K_LCTRL] or keys[pygame.K_RCTRL] else 1
+                    elif self.set_frame_window.frame_h_entry_line.rect.collidepoint(mouse_pos):
+                        self.frame_adj['h'] += 20 if keys[pygame.K_LCTRL] or keys[pygame.K_RCTRL] else 1
 
-    def _update_(self, draw_frame):
+                elif event.button == 5:  # Mouse wheel down
+                    if self.set_frame_window.frame_x_entry_line.rect.collidepoint(mouse_pos):
+                        self.frame_adj['x'] -= 20 if keys[pygame.K_LCTRL] or keys[pygame.K_RCTRL] else 1
+                    elif self.set_frame_window.frame_y_entry_line.rect.collidepoint(mouse_pos):
+                        self.frame_adj['y'] -= 20 if keys[pygame.K_LCTRL] or keys[pygame.K_RCTRL] else 1
+                    elif self.set_frame_window.frame_w_entry_line.rect.collidepoint(mouse_pos):
+                        self.frame_adj['w'] -= 20 if keys[pygame.K_LCTRL] or keys[pygame.K_RCTRL] else 1
+                    elif self.set_frame_window.frame_h_entry_line.rect.collidepoint(mouse_pos):
+                        self.frame_adj['h'] -= 20 if keys[pygame.K_LCTRL] or keys[pygame.K_RCTRL] else 1
+
+    def _update_(self, draw_frame: DrawFrame):
         image_mouse_pos = manager_pos(self.manager_image)
         mouse_pos = pygame.mouse.get_pos()
         # กดปุ่มที่กำหนด และ moues_in_img
@@ -359,21 +327,66 @@ class DebugWindow(UIWindow):
             else:
                 self.enable_drawing_if_moues_in_image = False
 
-            if self.start_pos and self.end_pos:
-                draw_frame.add('#crt_drawing', crt=[(255, 255, 0), xyxy2xywh((*self.start_pos, *self.end_pos)), 1])
+            if self.start_pos and self.end_pos and self.drawing:
+                draw_frame.add('#crt_drawing', crt=[(255, 0, 255), xyxy2xywh((*self.start_pos, *self.end_pos)), 1])
                 # if self.set_mark_window.button_focus in ['m1', 'm2']:
                 #     draw_frame.add(f'#{self.set_mark_window.button_focus}',
                 #                    crt=[(255, 255, 0), xyxy2xywh((*self.start_pos, *self.end_pos)), 1])
 
-        if self.drawing:
-            # ถ้าวาด
-            # ให้แสดงข้อความที่ entry_line
-            x, y, w, h = draw_frame.rect_list['#crt_drawing'].rect
-            print(x, y, w, h)
-            self.set_frame_window.frame_x_entry_line.set_text(f'{x}')
-            self.set_frame_window.frame_y_entry_line.set_text(f'{y}')
-            self.set_frame_window.frame_w_entry_line.set_text(f'{w}')
-            self.set_frame_window.frame_h_entry_line.set_text(f'{h}')
+        if draw_frame.rect_list.get('#crt_drawing'):
+            if self.set_frame_window is None:
+                draw_frame.rect_list.pop('#crt_drawing')
+                return
+
+            def update_entry_line():
+                # แสดง ตัวเลข ที่ entry_line
+                x, y, w, h = draw_frame.rect_list['#crt_drawing'].rect
+                self.set_frame_window.frame_x_entry_line.set_text(f'{x}')
+                self.set_frame_window.frame_y_entry_line.set_text(f'{y}')
+                self.set_frame_window.frame_w_entry_line.set_text(f'{w}')
+                self.set_frame_window.frame_h_entry_line.set_text(f'{h}')
+
+            if self.drawing:  # ถ้าวาด
+                update_entry_line()
+
+            for k, v in self.frame_adj.items():
+                if v:
+                    if k == 'enter':
+                        self.frame_adj['enter'] = 0
+                        try:
+                            draw_frame.rect_list['#crt_drawing'].rect.x = int(
+                                self.set_frame_window.frame_x_entry_line.get_text())
+                        except ValueError:
+                            pass
+                        try:
+                            draw_frame.rect_list['#crt_drawing'].rect.x = int(
+                                self.set_frame_window.frame_y_entry_line.get_text())
+                        except ValueError:
+                            pass
+                        try:
+                            draw_frame.rect_list['#crt_drawing'].rect.x = int(
+                                self.set_frame_window.frame_w_entry_line.get_text())
+                        except ValueError:
+                            pass
+                        try:
+                            draw_frame.rect_list['#crt_drawing'].rect.x = int(
+                                self.set_frame_window.frame_h_entry_line.get_text())
+                        except ValueError:
+                            pass
+
+                    if k == 'x':
+                        draw_frame.rect_list['#crt_drawing'].rect.x += v
+                        self.frame_adj['x'] = 0
+                    elif k == 'y':
+                        draw_frame.rect_list['#crt_drawing'].rect.y += v
+                        self.frame_adj['y'] = 0
+                    elif k == 'w':
+                        draw_frame.rect_list['#crt_drawing'].rect.w += v
+                        self.frame_adj['w'] = 0
+                    elif k == 'h':
+                        draw_frame.rect_list['#crt_drawing'].rect.h += v
+                        self.frame_adj['h'] = 0
+                    update_entry_line()
 
 
 if __name__ == '__main__':
